@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dsh-video-storyboard 工作原理</title>
+<style>
+:root{
+  --plum:#21112a; --plum2:#2f1c3b; --line:#59436a;
+  --paper:#f7efe3; --dim:#c3b3c9;
+  --pink:#e0589f; --gold:#e9b949; --teal:#5fdccd;
+  --num:"DIN Condensed","DIN Alternate","PingFang SC",sans-serif;
+  --text:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--plum);scroll-behavior:smooth}
+body{margin:0;background:var(--plum);color:var(--paper);font:400 17px/1.7 var(--text)}
+img{display:block;max-width:100%;height:auto}
+.wrap{max-width:1160px;margin:0 auto;padding:48px 28px 80px}
+p{margin:0}
+
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:40px;align-items:center}
+h1{font-size:clamp(32px,4.4vw,54px);line-height:1.18;font-weight:800;margin:0;letter-spacing:-.01em}
+.hero p{margin-top:18px;color:var(--dim);font-size:18px}
+.hero figure{margin:0}
+.cap{font-size:14px;color:var(--dim);margin-top:8px}
+
+.path{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:0;border-top:2px solid var(--line)}
+.path a{display:block;padding:10px 10px 0 0;color:var(--paper);text-decoration:none;font-size:14px;line-height:1.4}
+.path a b{display:block;font:400 30px/1 var(--num);color:var(--gold);margin-bottom:5px}
+.path a:hover{color:var(--gold)}
+.path a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+.step{display:grid;grid-template-columns:112px minmax(0,1fr);gap:8px 28px;margin-top:84px;scroll-margin-top:24px}
+.no{font:400 104px/.85 var(--num);color:var(--gold)}
+h2{font-size:clamp(25px,3vw,36px);line-height:1.25;font-weight:800;margin:0 0 10px}
+.body{max-width:46em}
+.note{margin-top:12px;color:var(--dim);font-size:16px}
+.fig{margin:22px 0 0}
+.fig figcaption{font-size:14px;color:var(--dim);margin-top:8px}
+
+.two{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;align-items:end;margin-top:22px}
+.pix img{image-rendering:pixelated;width:100%}
+
+.cmp{margin-top:24px;display:grid;gap:18px}
+.cmp-h,.cmp-r{display:grid;grid-template-columns:repeat(3,1fr) 148px;gap:8px;align-items:center}
+.cmp-h{font-size:14px;color:var(--dim)}
+.cmp-r img{width:100%;image-rendering:pixelated}
+.res b{display:block;font:400 42px/1 var(--num)}
+.res span{font-size:14px;color:var(--dim);display:block;margin-top:4px;line-height:1.4}
+.res.hit b{color:var(--pink)}
+
+.search{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;margin-top:18px}
+
+.sizes{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-top:22px}
+.sizes figure{margin:0}
+.sizes figcaption{font-size:14px;color:var(--dim);margin-top:7px;max-width:230px;line-height:1.45}
+.key{display:flex;flex-wrap:wrap;gap:4px 22px;margin-top:9px;font-size:14px;color:var(--dim)}
+.key i{display:inline-block;width:18px;height:5px;margin-right:7px;vertical-align:middle}
+
+.opts{display:grid;gap:9px;margin-top:20px;max-width:640px}
+.opt{display:grid;grid-template-columns:128px 1fr 54px;gap:12px;align-items:center;font-size:15px}
+.opt u{display:block;height:15px;background:var(--line);text-decoration:none}
+.opt.on u{background:var(--teal)}
+.opt.on{font-weight:600}
+.opt span:last-child{font:400 24px/1 var(--num);text-align:right}
+.sheets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:24px}
+
+.crop{margin-top:20px}
+.crop img{width:100%}
+table{border-collapse:collapse;width:100%;max-width:640px;margin-top:20px;font-size:15px}
+th,td{padding:7px 12px 7px 0;text-align:left;border-bottom:1px solid var(--plum2);font-weight:400}
+th{color:var(--dim);font-size:14px}
+td:first-child{color:var(--gold);font:400 22px/1 var(--num)}
+
+.foot{margin-top:72px;padding-top:20px;border-top:2px solid var(--line);font-size:14px;color:var(--dim);max-width:60em}
+.foot a{color:var(--teal)}
+@media (max-width:860px){
+  .wrap{padding:30px 16px 56px}
+  .hero,.two{grid-template-columns:1fr}
+  .path{grid-template-columns:repeat(4,1fr)}
+  .step{grid-template-columns:1fr;margin-top:60px}
+  .no{font-size:72px}
+  .cmp-h{display:none}
+  .cmp-r{grid-template-columns:repeat(3,1fr)}
+  .res{grid-column:1/-1}
+  .sheets{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="hero">
+  <div>
+    <h1>它把 4 分半的 MV 变成 8 张这样的图</h1>
+    <p>这是 dsh-video-storyboard 的工作原理：模型不用看几千帧，只看这几张拼图和一张时间表。下面用 Uptown Funk 把这个过程拆成 7 步。</p>
+  </div>
+  <figure>
+    <img src="img/sheet1.png" alt="dsh-video-storyboard 输出的第 1 张分镜图，25 格，格子大小不一，带黄色编号">
+    <figcaption class="cap">工具真实输出的第 1 张，共 25 格，覆盖 0:00–0:32</figcaption>
+  </figure>
+</header>
+
+<ol class="path">
+  <li><a href="#s1"><b>1</b>缩小每一帧</a></li>
+  <li><a href="#s2"><b>2</b>比相邻两帧</a></li>
+  <li><a href="#s3"><b>3</b>过门槛算切点</a></li>
+  <li><a href="#s4"><b>4</b>补采样点，每段取一帧</a></li>
+  <li><a href="#s5"><b>5</b>定格子大小</a></li>
+  <li><a href="#s6"><b>6</b>排进画布</a></li>
+  <li><a href="#s7"><b>7</b>加编号和清单</a></li>
+</ol>
+
+<section class="step" id="s1">
+  <div class="no">1</div>
+  <div>
+    <h2>先把每一帧缩成 64×36 的小图</h2>
+    <p class="body">全片 6,742 帧都这样处理。这一步不是给人看的，只是为了后面比较时算得快。整条流程跑完这部片只用了约 60 秒。</p>
+    <div class="two">
+      <figure class="fig" style="margin:0"><img src="img/s1_full.jpg" alt="原始 1920×1080 画面"><figcaption>原片 1920×1080</figcaption></figure>
+      <figure class="fig pix" style="margin:0"><img src="img/s1_mini.png" alt="同一帧缩成 64×36 的色块"><figcaption>缩成 64×36，一共 2,304 个色块</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="s2">
+  <div class="no">2</div>
+  <div>
+    <h2>比相邻两帧，数有多少色块真的变了</h2>
+    <div class="search">
+      <svg viewBox="0 0 150 150" width="150" height="150" role="img" aria-label="一个色块在下一帧周围 5×5 的范围里找最像的">
+        <g fill="none" stroke="#59436a">
+          <path d="M0 30H150M0 60H150M0 90H150M0 120H150M30 0V150M60 0V150M90 0V150M120 0V150"/>
+        </g>
+        <rect x="0" y="0" width="150" height="150" fill="#5fdccd" opacity=".2"/>
+        <rect x="60" y="60" width="30" height="30" fill="#e9b949"/>
+      </svg>
+      <p class="body">上一帧的每个色块（黄色），都去下一帧它周围 5×5 的范围（青色）里找最像的，比的是色相、鲜艳度和亮度。找得到就算没变，找不到才算变了。分数 = 变了的比例 × 255，画面暗的时候再放大，最多 3 倍。</p>
+    </div>
+    <p class="note">这样一来，镜头在动时内容只是挪到附近，不算变；真换了镜头才找不到。粉色就是找不到的色块：</p>
+    <div class="cmp">
+      <div class="cmp-h"><span>上一帧</span><span>下一帧</span><span>变了的色块</span><span>分数</span></div>
+      <div class="cmp-r">
+        <img src="img/s2_cut_a.png" alt="硬切前一帧"><img src="img/s2_cut_b.png" alt="硬切后一帧"><img src="img/s2_cut_c.png" alt="大面积粉色">
+        <div class="res hit"><b>400</b><span>硬切（62.96 秒）<br>52% 的色块变了</span></div>
+      </div>
+      <div class="cmp-r">
+        <img src="img/s2_spin_a.png" alt="旋转镜头前一帧"><img src="img/s2_spin_b.png" alt="旋转镜头后一帧"><img src="img/s2_spin_c.png" alt="几乎没有粉色">
+        <div class="res"><b>0.3</b><span>画面在转（69.50 秒）<br>几乎没变，不算切点</span></div>
+      </div>
+      <div class="cmp-r">
+        <img src="img/s2_whip_a.png" alt="甩镜前一帧"><img src="img/s2_whip_b.png" alt="甩镜后一帧"><img src="img/s2_whip_c.png" alt="部分粉色">
+        <div class="res"><b>63</b><span>快速甩镜（99.90 秒）<br>有变化，但不够高</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="s3">
+  <div class="no">3</div>
+  <div>
+    <h2>分数过门槛，就算一个切点</h2>
+    <p class="body">门槛不是定死的：先按「大约 1.5 秒一刀」估一个，再按这部片平时的噪声定一条下限，在 80 到 150 之间。这部片噪声偏高，门槛顶到 150，最后找到 159 个切点。</p>
+    <figure class="fig"><img src="img/s3_whole.png" alt="全片逐帧分数曲线和 150 的门槛线"><figcaption>全片每一帧的分数。竖着的尖就是切点，浅色区域在下图放大</figcaption></figure>
+    <figure class="fig"><img src="img/s3_zoom.png" alt="53.88 到 66.36 秒的分数和 150 的门槛线，白色三角标出过了门槛的帧"><figcaption>放大 53.88–66.36 秒。白三角标出过了门槛的帧</figcaption></figure>
+    <p class="note">有些切点找到后还会打上标签（闪白、黑场、硬切、叠化、疑似运动），只标记，不删除。</p>
+  </div>
+</section>
+
+<section class="step" id="s4">
+  <div class="no">4</div>
+  <div>
+    <h2>画面一直在变的地方补采样点，然后每段取一帧</h2>
+    <p class="body">同一个镜头如果一直在动，一帧代表不了它。所以在切点之间把画面变化累加起来，攒够 600 分就补一个采样点（README 里叫「积分假切点」），然后清零重攒。这部片补了 42 个。</p>
+    <figure class="fig"><img src="img/s4_integral.png" alt="17 到 60 秒累计画面变化的锯齿曲线，每次攒到 600 就归零"><figcaption>17–60 秒累计的画面变化。粉线是补的采样点</figcaption></figure>
+    <p class="note">切点和采样点把全片切成一段段，每段默认取最中间那一帧，最后是 199 帧。比如下面相邻的两段：</p>
+    <div class="two" style="grid-template-columns:1fr 1fr">
+      <figure class="fig" style="margin:0"><img src="img/s4_f79.jpg" alt="第 79 格，取自 101.36 秒"><figcaption>第 79 格：99.72–103.00 秒，取 101.36 秒</figcaption></figure>
+      <figure class="fig" style="margin:0"><img src="img/s4_f80.jpg" alt="第 80 格，取自 105.60 秒"><figcaption>第 80 格：103.00–108.20 秒，取 105.60 秒</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="s5">
+  <div class="no">5</div>
+  <div>
+    <h2>切得越密的地方，格子越小</h2>
+    <p class="body">每个位置都数一下附近 100 帧（4 秒）里有几个切点，平滑一下，再用 7 道线分成 8 档，第 k 档的边长就是整幅的 1/k。这是整个方法最有特点的一步：看一眼格子大小，就知道这里是长镜头还是快切。</p>
+    <figure class="fig"><img src="img/s5_tiers.png" alt="上半是切点密度曲线和 7 道分档线，下半是每一格最终大小"></figure>
+    <div class="key"><span><i style="background:var(--paper)"></i>真切点切出的格子</span><span><i style="background:var(--pink)"></i>补采样点切出的格子，再小 3 档</span></div>
+    <p class="note">63 秒和 210 秒的尖峰就是快切，格子压到 1/8；1/2 的大格都落在切得少的地方。这部片还整体再小了一档，因为这样图最少。</p>
+    <div class="sizes">
+      <figure><img src="img/s5_k2.jpg" width="400" alt="1/2 大小的格子"><figcaption>1/2 档，看得清人脸和动作</figcaption></figure>
+      <figure><img src="img/s5_k4.jpg" width="200" alt="1/4 大小的格子"><figcaption>1/4 档，看得清构图和谁在画面里</figcaption></figure>
+      <figure><img src="img/s5_k8.jpg" width="100" alt="1/8 大小的格子"><figcaption>1/8 档，只看得出换了镜头</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="s6">
+  <div class="no">6</div>
+  <div>
+    <h2>按时间顺序排进画布，能少一张就少一张</h2>
+    <p class="body">格子的先后顺序不动，一行一行往里排，尺寸可以微调，尽量不留空。它会试三种大小方案，挑张数最少、最小格还认得出的那种。这部片选了最省的方案，画布用满 96.7%。</p>
+    <div class="opts" role="img" aria-label="三种方案需要的张数：紧凑 8 张，标准 17 张，全尺寸 76 张">
+      <div class="opt on"><span>紧凑（选中）</span><u style="width:10.5%"></u><span>8 张</span></div>
+      <div class="opt"><span>标准</span><u style="width:22.4%"></u><span>17 张</span></div>
+      <div class="opt"><span>全尺寸</span><u style="width:100%"></u><span>76 张</span></div>
+    </div>
+    <div class="sheets">
+      <img src="img/sheet1.png" alt="第 1 张"><img src="img/sheet2.png" alt="第 2 张"><img src="img/sheet3.png" alt="第 3 张"><img src="img/sheet4.png" alt="第 4 张">
+      <img src="img/sheet5.png" alt="第 5 张"><img src="img/sheet6.png" alt="第 6 张"><img src="img/sheet7.png" alt="第 7 张"><img src="img/sheet8.png" alt="第 8 张">
+    </div>
+    <p class="note">最后真的把这 199 帧从原片取出来，贴到各自的格子里。这就是整首歌的 8 张图。</p>
+  </div>
+</section>
+
+<section class="step" id="s7">
+  <div class="no">7</div>
+  <div>
+    <h2>烧上编号，加音频条，再配一张文字清单</h2>
+    <p class="body">模型数格子容易数错，读数字很准，所以编号直接烧进画面。底部的条和画面用同一条时间轴，青色是响度，黄色刻度是切点。</p>
+    <figure class="fig crop"><img src="img/s7_badge.png" alt="第 2 张图左上角放大，看得到黄色编号"><figcaption>放大看编号</figcaption></figure>
+    <figure class="fig crop"><img src="img/s7_strip.png" alt="底部音频条放大，青色响度和黄色切点刻度"><figcaption>放大看底部的条</figcaption></figure>
+    <p class="note">文字清单告诉模型每一格对应哪段时间。这个例子关了台词；开了字幕或语音识别的话，每一格还会带上那段时间说的话。</p>
+    <table>
+      <thead><tr><th>格</th><th>这一格代表的时间</th><th>取的是</th><th>大小</th></tr></thead>
+      <tbody><tr><td>2</td><td>0.20–3.72 秒（切点）</td><td>1.96 秒那一帧</td><td>1/3</td></tr><tr><td>5</td><td>5.40–6.96 秒（切点）</td><td>6.18 秒那一帧</td><td>1/5</td></tr><tr><td>14</td><td>12.56–14.88 秒（切点）</td><td>13.72 秒那一帧</td><td>1/3</td></tr><tr><td>29</td><td>35.88–39.96 秒（补采样点）</td><td>37.92 秒那一帧</td><td>1/5</td></tr><tr><td>47</td><td>61.12–61.32 秒（切点）</td><td>61.22 秒那一帧</td><td>1/8</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<p class="foot">示例画面取自 Mark Ronson ft. Bruno Mars《Uptown Funk》MV，版权归原权利人，这里只用来说明算法。第 6 步的 8 张图和第 7 步的编号、音频条都是工具（0.6.7）的真实输出。第 1–5 步的中间图按源码里的公式重算，分数分布（中位数 2.54、最高 765）、门槛 150 和图中的采样点都和工具输出对得上，切点数重算是 161 个，工具输出是 159 个。源码：<a href="https://github.com/SAOS-3624/dsh-video-storyboard">github.com/SAOS-3624/dsh-video-storyboard</a></p>
+
+</main>
+</body>
+</html>
